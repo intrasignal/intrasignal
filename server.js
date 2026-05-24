@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve frontend
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ===== AUTH =====
 app.post('/api/register', async (req, res) => {
@@ -184,7 +184,7 @@ app.post('/api/setup/admin', async (req, res) => {
 
 // Catch-all: serve frontend
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+ res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 function safeUser(u) {
