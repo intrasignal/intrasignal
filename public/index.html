@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IntraSignal — Live Strategy Scanner</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root{--bg:#0a0e17;--bg2:#111827;--bg3:#1a2235;--bd:rgba(255,255,255,0.07);--green:#00d4a0;--gdim:rgba(0,212,160,0.12);--red:#ff4d6a;--rdim:rgba(255,77,106,0.12);--amber:#f5a623;--adim:rgba(245,166,35,0.12);--blue:#4f9cf9;--bdim:rgba(79,156,249,0.12);--txt:#e8eaf0;--txt2:#8892a4;--txt3:#4a5568;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}html,body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;min-height:100vh}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:2px}
+.page{display:none;min-height:100vh}.page.active{display:block}
+
+/* AUTH */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at 50% 0%,rgba(0,212,160,0.08) 0%,transparent 60%)}
+.auth-box{background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:40px;width:100%;max-width:420px}
+.auth-logo{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--green);letter-spacing:3px;text-align:center;margin-bottom:6px}
+.auth-sub{text-align:center;color:var(--txt2);font-size:13px;margin-bottom:24px}
+.auth-tabs{display:flex;background:var(--bg3);border-radius:8px;padding:3px;margin-bottom:20px}
+.auth-tab{flex:1;padding:8px;text-align:center;font-size:13px;font-weight:500;border-radius:6px;cursor:pointer;color:var(--txt2);transition:.2s}
+.auth-tab.active{background:var(--bg2);color:var(--txt)}
+.form-group{margin-bottom:14px}
+.form-label{font-size:12px;color:var(--txt2);margin-bottom:5px;display:block;letter-spacing:.4px}
+.form-input{width:100%;background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);color:var(--txt);padding:10px 14px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:.2s}
+.form-input:focus{border-color:rgba(0,212,160,0.4)}
+.btn-primary{width:100%;padding:12px;border-radius:var(--r);border:none;background:var(--green);color:#000;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:.2s}
+.btn-primary:hover{background:#00f0b8;box-shadow:0 4px 16px rgba(0,212,160,.3)}
+.btn-primary:disabled{background:var(--bg3);color:var(--txt3);cursor:not-allowed;box-shadow:none}
+.auth-error{background:var(--rdim);border:1px solid rgba(255,77,106,.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:14px;display:none}
+.auth-error.show{display:block}
+.trial-badge{background:var(--gdim);border:1px solid rgba(0,212,160,.2);border-radius:8px;padding:9px 14px;font-size:12px;color:var(--green);text-align:center;margin-bottom:14px}
+
+/* APP LAYOUT */
+.app-layout{display:grid;grid-template-columns:240px 1fr;height:100vh}
+.sidebar{background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-logo{padding:18px 16px;font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:var(--green);letter-spacing:2px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:lp 1.4s infinite}
+@keyframes lp{0%,100%{box-shadow:0 0 0 0 rgba(0,212,160,.6)}50%{box-shadow:0 0 0 5px rgba(0,212,160,0)}}
+.nav-sec{padding:14px 12px 4px;font-size:10px;color:var(--txt3);letter-spacing:1.5px;text-transform:uppercase;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;margin:2px 8px;border-radius:8px;cursor:pointer;color:var(--txt2);font-size:13px;font-weight:500;transition:.15s}
+.nav-item:hover{background:var(--bg3);color:var(--txt)}
+.nav-item.active{background:var(--gdim);color:var(--green);border:1px solid rgba(0,212,160,.15)}
+.sidebar-bottom{margin-top:auto;padding:14px;border-top:1px solid var(--bd)}
+.user-chip{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border-radius:var(--r)}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:var(--green);color:#000;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.user-name{font-size:13px;font-weight:500;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-plan{font-size:11px}
+.plan-trial{color:var(--amber)}.plan-paid{color:var(--green)}.plan-exp{color:var(--red)}
+.logout-btn{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:18px;padding:4px}
+.logout-btn:hover{color:var(--red)}
+
+/* MAIN */
+.main-content{overflow-y:auto;display:flex;flex-direction:column}
+.topbar{padding:14px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;background:var(--bg);position:sticky;top:0;z-index:10;flex-shrink:0}
+.page-title{font-size:16px;font-weight:600}
+.market-pill{font-family:'Space Mono',monospace;font-size:11px;padding:4px 12px;border-radius:20px}
+.pill-open{background:var(--gdim);color:var(--green);border:1px solid rgba(0,212,160,.2)}
+.pill-closed{background:var(--rdim);color:var(--red);border:1px solid rgba(255,77,106,.2)}
+
+/* DASHBOARD */
+.dash-pad{padding:16px 20px}
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.metric-card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:14px}
+.metric-label{font-size:10px;color:var(--txt2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px}
+.metric-val{font-family:'Space Mono',monospace;font-size:24px;font-weight:700}
+.mv-green{color:var(--green)}.mv-red{color:var(--red)}.mv-amber{color:var(--amber)}.mv-blue{color:var(--blue)}
+
+.controls-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.strat-tog{display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;cursor:pointer;font-size:13px;color:var(--txt2);transition:.2s}
+.strat-tog:hover{border-color:rgba(255,255,255,.15)}
+.strat-tog.on{border-color:rgba(0,212,160,.3);background:var(--gdim);color:var(--green)}
+.scan-btn{padding:9px 20px;background:var(--green);border:none;border-radius:8px;color:#000;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:.2s;margin-left:auto}
+.scan-btn:hover{background:#00f0b8}.scan-btn:disabled{background:var(--bg3);color:var(--txt3);cursor:not-allowed}
+.scan-prog{height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-bottom:10px}
+.scan-prog-bar{height:100%;background:var(--green);border-radius:2px;width:0%;transition:width .4s}
+.filter-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.fpill{padding:5px 14px;border-radius:20px;border:1px solid var(--bd);background:transparent;color:var(--txt2);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.15s}
+.fpill:hover{background:var(--bg3);color:var(--txt)}.fpill.active{background:var(--bg3);color:var(--txt);border-color:rgba(255,255,255,.15)}
+
+/* SIGNALS */
+.signal-grid{display:flex;flex-direction:column;gap:8px}
+.sig-card{background:var(--bg2);border:1px solid var(--bd);border-left:3px solid transparent;border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:.2s;animation:si .2s ease}
+@keyframes si{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.sig-card:hover{background:var(--bg3);transform:translateX(2px)}
+.sig-card.buy{border-left-color:var(--green)}.sig-card.sell{border-left-color:var(--red)}.sig-card.trail{border-left-color:var(--amber)}.sig-card.exit{border-left-color:var(--blue)}
+.sig-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sig-sym{font-family:'Space Mono',monospace;font-size:15px;font-weight:700}
+.sig-strat{font-size:11px;color:var(--txt2);margin-top:2px}
+.sig-badge{font-size:11px;font-weight:600;padding:3px 12px;border-radius:20px}
+.sb-buy{background:var(--gdim);color:var(--green);border:1px solid rgba(0,212,160,.2)}
+.sb-sell{background:var(--rdim);color:var(--red);border:1px solid rgba(255,77,106,.2)}
+.sb-trail{background:var(--adim);color:var(--amber);border:1px solid rgba(245,166,35,.2)}
+.sb-exit{background:var(--bdim);color:var(--blue);border:1px solid rgba(79,156,249,.2)}
+.sig-prices{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.sp{background:var(--bg3);border-radius:6px;padding:7px 10px}
+.sp-lbl{font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px}
+.sp-val{font-family:'Space Mono',monospace;font-size:12px;font-weight:700}
+.sp-val.g{color:var(--green)}.sp-val.r{color:var(--red)}.sp-val.a{color:var(--amber)}.sp-val.w{color:var(--txt)}
+.sig-time{font-size:10px;color:var(--txt3);margin-top:8px;font-family:'Space Mono',monospace}
+.empty-state{padding:50px;text-align:center;color:var(--txt3)}
+.empty-icon{font-size:38px;margin-bottom:10px;opacity:.4}
+.empty-title{font-size:14px;color:var(--txt2);margin-bottom:5px}
+.empty-sub{font-size:13px;line-height:1.6;max-width:260px;margin:0 auto}
+
+/* SUB BANNER */
+.sub-banner{margin-bottom:14px;padding:12px 16px;border-radius:var(--r);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sub-trial{background:var(--adim);border:1px solid rgba(245,166,35,.25)}
+.sub-expired{background:var(--rdim);border:1px solid rgba(255,77,106,.25)}
+.sub-paid{background:var(--gdim);border:1px solid rgba(0,212,160,.2)}
+.sub-text{font-size:13px}
+.sub-action{padding:6px 14px;border-radius:8px;border:none;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap}
+.sub-upgrade{background:var(--amber);color:#000}
+.sub-active{background:var(--gdim);color:var(--green);border:1px solid rgba(0,212,160,.3) !important}
+
+/* SETTINGS */
+.settings-section{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:20px;margin-bottom:14px}
+.settings-title{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--txt)}
+.settings-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.btn-save{padding:9px 20px;background:var(--blue);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;transition:.2s}
+.btn-save:hover{background:#6baeff}
+.badge-ok{background:var(--gdim);color:var(--green);border:1px solid rgba(0,212,160,.2);padding:3px 10px;border-radius:20px;font-size:11px}
+.badge-no{background:var(--rdim);color:var(--red);border:1px solid rgba(255,77,106,.2);padding:3px 10px;border-radius:20px;font-size:11px}
+
+/* PRICING */
+.pricing-wrap{padding:20px}
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;max-width:640px;margin-bottom:20px}
+.price-card{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:22px}
+.price-card.featured{border-color:rgba(0,212,160,.4);background:rgba(0,212,160,.04)}
+.price-name{font-size:12px;font-weight:600;color:var(--txt2);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.price-amt{font-family:'Space Mono',monospace;font-size:34px;font-weight:700;color:var(--txt);margin-bottom:3px}
+.price-period{font-size:13px;color:var(--txt2);margin-bottom:18px}
+.price-features{list-style:none;margin-bottom:20px;display:flex;flex-direction:column;gap:7px}
+.price-features li{font-size:13px;color:var(--txt2);display:flex;align-items:center;gap:7px}
+.price-features li::before{content:'✓';color:var(--green);font-weight:700;font-size:11px}
+.price-cta{width:100%;padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:.2s}
+.cta-green{background:var(--green);color:#000}.cta-green:hover{background:#00f0b8}
+.cta-out{background:transparent;border:1px solid var(--bd);color:var(--txt2)}
+.payment-box{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:20px;max-width:460px}
+.payment-box h3{font-size:14px;margin-bottom:12px}
+.payment-box p{font-size:13px;color:var(--txt2);line-height:1.7;margin-bottom:8px}
+.upi-id{font-family:'Space Mono',monospace;font-size:14px;color:var(--green);background:var(--bg3);padding:8px 14px;border-radius:8px;display:inline-block;margin:6px 0}
+
+/* ADMIN */
+.admin-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.admin-table{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:14px}
+.admin-table table{width:100%;border-collapse:collapse}
+.admin-table th{background:var(--bg3);padding:10px 14px;font-size:11px;color:var(--txt2);text-align:left;letter-spacing:.5px;text-transform:uppercase;font-weight:600}
+.admin-table td{padding:10px 14px;font-size:13px;border-top:1px solid var(--bd);color:var(--txt2)}
+.admin-table td:first-child{color:var(--txt);font-weight:500}
+.btn-sm{padding:4px 10px;border-radius:6px;border:none;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-right:4px}
+.btn-act{background:var(--gdim);color:var(--green);border:1px solid rgba(0,212,160,.2)}
+.btn-sus{background:var(--rdim);color:var(--red);border:1px solid rgba(255,77,106,.2)}
+
+/* TOAST */
+.toast-wrap{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:12px 16px;min-width:270px;max-width:350px;pointer-events:auto;animation:ti .3s ease;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+@keyframes ti{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+.toast.buy{border-left:3px solid var(--green)}.toast.sell{border-left:3px solid var(--red)}.toast.info{border-left:3px solid var(--blue)}
+.toast-title{font-size:13px;font-weight:600;margin-bottom:2px}
+.toast-body{font-size:11px;color:var(--txt2);font-family:'Space Mono',monospace}
+</style>
+</head>
+<body>
+
+<!-- AUTH PAGE -->
+<div id="page-auth" class="page active">
+<div class="auth-wrap">
+<div class="auth-box">
+  <div class="auth-logo">⚡ INTRASIGNAL</div>
+  <div class="auth-sub">Live intraday signal scanner · ORB · EMA · VWAP</div>
+  <div class="auth-tabs">
+    <div class="auth-tab active" onclick="switchTab('login')">Login</div>
+    <div class="auth-tab" onclick="switchTab('register')">Register</div>
+  </div>
+  <div class="trial-badge" id="trial-badge" style="display:none">✓ 7-day free trial · কোনো credit card লাগবে না</div>
+  <div class="auth-error" id="auth-error"></div>
+  <div id="login-form">
+    <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="login-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn-primary" onclick="doLogin()">Login →</button>
+  </div>
+  <div id="register-form" style="display:none">
+    <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input" id="reg-name" placeholder="Rahul Das"></div>
+    <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="reg-email" placeholder="you@example.com"></div>
+    <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" id="reg-password" placeholder="Minimum 6 characters"></div>
+    <button class="btn-primary" onclick="doRegister()">Start Free Trial →</button>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="page-app" class="page">
+<div class="app-layout">
+  <div class="sidebar">
+    <div class="sidebar-logo"><div class="live-dot"></div>INTRASIGNAL</div>
+    <div class="nav-sec">Menu</div>
+    <div class="nav-item active" id="nav-dashboard" onclick="showView('dashboard')"><span>📊</span> Dashboard</div>
+    <div class="nav-item" id="nav-pricing" onclick="showView('pricing')"><span>💳</span> Subscription</div>
+    <div class="nav-item" id="nav-settings" onclick="showView('settings')"><span>⚙️</span> Settings</div>
+    <div class="nav-item" id="nav-admin" onclick="showView('admin')" style="display:none"><span>🛡️</span> Admin Panel</div>
+    <div class="sidebar-bottom">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div style="flex:1;min-width:0">
+          <div class="user-name" id="sidebar-name">—</div>
+          <div class="user-plan" id="sidebar-plan">—</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Logout">↩</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="page-title" id="view-title">Dashboard</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--txt2)" id="clock">--:--:--</div>
+        <div class="market-pill pill-closed" id="mstatus">CLOSED</div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="view-dashboard" class="dash-pad">
+      <div id="sub-banner"></div>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="metric-label">Total Signals</div><div class="metric-val mv-blue" id="m-total">0</div></div>
+        <div class="metric-card"><div class="metric-label">Buy Signals</div><div class="metric-val mv-green" id="m-buy">0</div></div>
+        <div class="metric-card"><div class="metric-label">Sell Signals</div><div class="metric-val mv-red" id="m-sell">0</div></div>
+        <div class="metric-card"><div class="metric-label">Trail SL</div><div class="metric-val mv-amber" id="m-trail">0</div></div>
+      </div>
+      <div class="controls-row">
+        <div class="strat-tog on" id="tog-orb" onclick="toggleStrat('orb')">📊 ORB</div>
+        <div class="strat-tog on" id="tog-ema" onclick="toggleStrat('ema')">📈 EMA 9×21</div>
+        <div class="strat-tog on" id="tog-vwap" onclick="toggleStrat('vwap')">🎯 VWAP</div>
+        <button class="scan-btn" id="scan-btn" onclick="doScan()">⚡ Scan Live Market</button>
+      </div>
+      <div class="scan-prog"><div class="scan-prog-bar" id="spb"></div></div>
+      <div class="filter-row">
+        <button class="fpill active" onclick="setFilter('all',this)">All</button>
+        <button class="fpill" onclick="setFilter('buy',this)">🟢 Buy</button>
+        <button class="fpill" onclick="setFilter('sell',this)">🔴 Sell</button>
+        <button class="fpill" onclick="setFilter('trail',this)">🔔 Trail SL</button>
+        <button class="fpill" onclick="setFilter('exit',this)">⚡ Exit</button>
+      </div>
+      <div class="signal-grid" id="signal-grid">
+        <div class="empty-state"><div class="empty-icon">⚡</div><div class="empty-title">Scan করো, signal দেখো</div><div class="empty-sub">Settings-এ Upstox token দাও, তারপর Scan চাপো।</div></div>
+      </div>
+    </div>
+
+    <!-- PRICING -->
+    <div id="view-pricing" class="pricing-wrap" style="display:none">
+      <div class="pricing-grid">
+        <div class="price-card">
+          <div class="price-name">Free Trial</div>
+          <div class="price-amt">₹0</div>
+          <div class="price-period">7 দিন</div>
+          <ul class="price-features"><li>Nifty 50 scanning</li><li>ORB + EMA + VWAP</li><li>Entry / Exit alerts</li><li>Trailing SL</li></ul>
+          <button class="price-cta cta-out" disabled>Current Plan</button>
+        </div>
+        <div class="price-card featured">
+          <div class="price-name">Pro Monthly</div>
+          <div class="price-amt">₹299</div>
+          <div class="price-period">প্রতি মাসে</div>
+          <ul class="price-features"><li>Top 500 stocks</li><li>All 3 strategies</li><li>Real-time notifications</li><li>TradingView chart links</li><li>Priority support</li></ul>
+          <button class="price-cta cta-green" onclick="document.getElementById('pay-box').style.display='block'">Subscribe Now →</button>
+        </div>
+      </div>
+      <div class="payment-box" id="pay-box" style="display:none">
+        <h3>💳 UPI দিয়ে payment করো</h3>
+        <p>নিচের UPI ID-তে ₹299 send করো। Screenshot WhatsApp-এ পাঠাও:</p>
+        <div class="upi-id" id="upi-display">your-upi@upi</div>
+        <p>WhatsApp: <strong style="color:var(--green)" id="whatsapp-num">+91 XXXXXXXXXX</strong></p>
+        <p style="font-size:12px;color:var(--txt3)">Admin verify করার পর ২-৩ ঘণ্টার মধ্যে activate হবে।</p>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="view-settings" class="dash-pad" style="display:none">
+      <div class="settings-section">
+        <div class="settings-title">🔑 Upstox API Credentials</div>
+        <p style="font-size:12px;color:var(--txt2);margin-bottom:14px;line-height:1.6">
+          <a href="https://account.upstox.com/developer/apps" target="_blank" style="color:var(--blue)">account.upstox.com/developer/apps ↗</a> থেকে নাও
+        </p>
+        <div class="settings-row">
+          <div class="form-group" style="margin:0"><label class="form-label">API Key</label><input type="text" class="form-input" id="s-apikey" placeholder="351374a1-xxxx-xxxx"></div>
+          <div class="form-group" style="margin:0"><label class="form-label">API Secret</label><input type="text" class="form-input" id="s-apisecret" placeholder="zkeolXXX"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Access Token <span style="color:var(--amber)">(প্রতিদিন নতুন)</span></label>
+          <input type="text" class="form-input" id="s-token" placeholder="eyJ0eXAiOiJKV1Qi...">
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+          <button class="btn-save" onclick="saveUpstox()">Save</button>
+          <span id="upstox-st"></span>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-title">👤 Account Info</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div><div class="form-label">Name</div><div style="font-size:14px;color:var(--txt)" id="s-name">—</div></div>
+          <div><div class="form-label">Email</div><div style="font-size:14px;color:var(--txt)" id="s-email">—</div></div>
+          <div><div class="form-label">Plan</div><div id="s-plan">—</div></div>
+          <div><div class="form-label">Expires</div><div style="font-size:14px;color:var(--amber)" id="s-exp">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="view-admin" class="dash-pad" style="display:none">
+      <div class="admin-grid">
+        <div class="metric-card"><div class="metric-label">Total Users</div><div class="metric-val mv-blue" id="ad-tot">—</div></div>
+        <div class="metric-card"><div class="metric-label">Trial</div><div class="metric-val mv-amber" id="ad-tri">—</div></div>
+        <div class="metric-card"><div class="metric-label">Paid</div><div class="metric-val mv-green" id="ad-pai">—</div></div>
+        <div class="metric-card"><div class="metric-label">Signals</div><div class="metric-val mv-blue" id="ad-sig">—</div></div>
+      </div>
+      <div class="settings-section" style="margin-bottom:14px">
+        <div class="settings-title">💰 Settings</div>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="margin:0;flex:1;min-width:140px">
+            <label class="form-label">Monthly Price (₹)</label>
+            <input type="number" class="form-input" id="ad-price" value="299">
+          </div>
+          <div class="form-group" style="margin:0;flex:1;min-width:180px">
+            <label class="form-label">UPI ID</label>
+            <input type="text" class="form-input" id="ad-upi" placeholder="yourname@upi">
+          </div>
+          <div class="form-group" style="margin:0;flex:1;min-width:160px">
+            <label class="form-label">WhatsApp Number</label>
+            <input type="text" class="form-input" id="ad-wa" placeholder="+91 9XXXXXXXXX">
+          </div>
+          <button class="btn-save" onclick="saveAdminSettings()">Save</button>
+        </div>
+      </div>
+      <div class="admin-table">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody id="admin-tbody"><tr><td colspan="5" style="text-align:center;padding:20px;color:var(--txt3)">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+// === CONFIG ===
+// Railway deploy করার পর এই URL change করো:
+const API = window.location.hostname==='localhost'||window.location.protocol==='file:'
+  ? 'http://localhost:3001'
+  : window.location.origin;
+
+// === STATE ===
+let token = localStorage.getItem('is_token');
+let currentUser = null;
+let allSignals = [];
+let activeFilter = 'all';
+let strategies = {orb:true,ema:true,vwap:true};
+let scanning = false;
+let liveTimer = null;
+
+window.onload = () => { if(token) autoLogin(); tickClock(); setInterval(tickClock,1000); };
+
+async function autoLogin() {
+  try { const r=await apiFetch('/api/me'); currentUser=r.user; showApp(); } catch { token=null; localStorage.removeItem('is_token'); }
+}
+
+function tickClock() {
+  const ist=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));
+  const clk=document.getElementById('clock'); if(clk) clk.textContent=ist.toTimeString().slice(0,8)+' IST';
+  const t=ist.getHours()*60+ist.getMinutes();
+  const open=t>=9*60+15&&t<=15*60+30&&ist.getDay()>0&&ist.getDay()<6;
+  const ms=document.getElementById('mstatus'); if(ms){ms.textContent=open?'● OPEN':'○ CLOSED'; ms.className='market-pill '+(open?'pill-open':'pill-closed');}
+}
+
+async function apiFetch(path,opts={}) {
+  const h={'Content-Type':'application/json'}; if(token) h['Authorization']='Bearer '+token;
+  const r=await fetch(API+path,{...opts,headers:{...h,...(opts.headers||{})}});
+  const d=await r.json(); if(!r.ok) throw d; return d;
+}
+
+// AUTH
+function switchTab(t) {
+  document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',(i===0&&t==='login')||(i===1&&t==='register')));
+  document.getElementById('login-form').style.display=t==='login'?'block':'none';
+  document.getElementById('register-form').style.display=t==='register'?'block':'none';
+  document.getElementById('trial-badge').style.display=t==='register'?'block':'none';
+  document.getElementById('auth-error').classList.remove('show');
+}
+switchTab('login');
+
+async function doLogin() {
+  const email=document.getElementById('login-email').value;
+  const password=document.getElementById('login-password').value;
+  try {
+    const d=await apiFetch('/api/login',{method:'POST',body:JSON.stringify({email,password})});
+    token=d.token; currentUser=d.user; localStorage.setItem('is_token',token); showApp();
+  } catch(e) { const el=document.getElementById('auth-error'); el.textContent=e.error||'Login failed'; el.classList.add('show'); }
+}
+
+async function doRegister() {
+  const name=document.getElementById('reg-name').value;
+  const email=document.getElementById('reg-email').value;
+  const password=document.getElementById('reg-password').value;
+  try {
+    const d=await apiFetch('/api/register',{method:'POST',body:JSON.stringify({name,email,password})});
+    token=d.token; currentUser=d.user; localStorage.setItem('is_token',token); showApp(); showToast('✓ Welcome! 7-day trial শুরু হয়েছে।','info');
+  } catch(e) { const el=document.getElementById('auth-error'); el.textContent=e.error||'Registration failed'; el.classList.add('show'); }
+}
+
+function doLogout() {
+  token=null; currentUser=null; localStorage.removeItem('is_token'); allSignals=[];
+  if(liveTimer) clearInterval(liveTimer);
+  document.getElementById('page-app').classList.remove('active');
+  document.getElementById('page-auth').classList.add('active');
+}
+
+function showApp() {
+  document.getElementById('page-auth').classList.remove('active');
+  document.getElementById('page-app').classList.add('active');
+  document.getElementById('sidebar-name').textContent=currentUser.name;
+  document.getElementById('user-avatar').textContent=currentUser.name[0].toUpperCase();
+  const sp=document.getElementById('sidebar-plan');
+  if(currentUser.plan==='trial'){sp.textContent='🕐 Trial';sp.className='user-plan plan-trial';}
+  else{sp.textContent='✓ Pro';sp.className='user-plan plan-paid';}
+  if(currentUser.is_admin) document.getElementById('nav-admin').style.display='flex';
+  showView('dashboard'); loadSubStatus();
+}
+
+function showView(v) {
+  ['dashboard','pricing','settings','admin'].forEach(x=>{
+    document.getElementById('view-'+x).style.display='none';
+    const n=document.getElementById('nav-'+x); if(n) n.classList.remove('active');
+  });
+  document.getElementById('view-'+v).style.display='block';
+  const n=document.getElementById('nav-'+v); if(n) n.classList.add('active');
+  const titles={dashboard:'Dashboard',pricing:'Subscription',settings:'Settings',admin:'Admin Panel'};
+  document.getElementById('view-title').textContent=titles[v]||v;
+  if(v==='settings') loadSettings();
+  if(v==='admin') loadAdminData();
+}
+
+async function loadSubStatus() {
+  try {
+    const d=await apiFetch('/api/subscription/status');
+    const bn=document.getElementById('sub-banner');
+    if(d.status==='trial')
+      bn.innerHTML=`<div class="sub-banner sub-trial"><span class="sub-text">🕐 Trial: <strong>${d.daysLeft} দিন বাকি</strong></span><button class="sub-action sub-upgrade" onclick="showView('pricing')">Upgrade ₹${d.price}/mo</button></div>`;
+    else if(d.status==='expired')
+      bn.innerHTML=`<div class="sub-banner sub-expired"><span class="sub-text">⚠️ Trial expired! Subscribe করো।</span><button class="sub-action sub-upgrade" onclick="showView('pricing')">Subscribe Now</button></div>`;
+    else if(d.status==='paid')
+      bn.innerHTML=`<div class="sub-banner sub-paid"><span class="sub-text">✓ Pro Active — ${d.daysLeft} দিন বাকি</span><span class="sub-action sub-active">Active ✓</span></div>`;
+  } catch{}
+}
+
+// SCAN
+function toggleStrat(s){strategies[s]=!strategies[s];document.getElementById('tog-'+s).classList.toggle('on',strategies[s]);}
+
+async function doScan() {
+  if(scanning) return;
+  scanning=true; allSignals=[]; updateMetrics(); renderSignals();
+  document.getElementById('scan-btn').disabled=true;
+  document.getElementById('scan-btn').textContent='⏳ Scanning...';
+  document.getElementById('spb').style.width='30%';
+  try {
+    const d=await apiFetch('/api/scan',{method:'POST',body:JSON.stringify({strategies})});
+    allSignals=d.signals||[];
+    allSignals.slice(0,3).forEach(s=>showToast(`${s.type.toUpperCase()} — ${s.symbol} @ ₹${s.entry}`,s.type==='buy'?'buy':'sell'));
+    document.getElementById('spb').style.width='100%';
+    setTimeout(()=>document.getElementById('spb').style.width='0%',800);
+    showToast(`✓ ${allSignals.length} signals found`,'info');
+    if(!liveTimer) startLive();
+  } catch(e) {
+    const msg=e.message||e.error||'Scan failed';
+    showToast('❌ '+msg,'sell');
+    document.getElementById('spb').style.width='0%';
+    if(e.error==='trial_expired'||e.error==='subscription_expired') showView('pricing');
+    else if((msg+'').toLowerCase().includes('token')) showView('settings');
+  }
+  updateMetrics(); renderSignals();
+  scanning=false;
+  document.getElementById('scan-btn').disabled=false;
+  document.getElementById('scan-btn').textContent='⚡ Scan Again';
+}
+
+function startLive() {
+  liveTimer=setInterval(async()=>{
+    try{const d=await apiFetch('/api/signals');if(d.signals?.length>allSignals.length){allSignals=d.signals;updateMetrics();renderSignals();}
+    }catch{}
+  },60000);
+}
+
+function setFilter(f,btn){activeFilter=f;document.querySelectorAll('.fpill').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderSignals();}
+
+function renderSignals() {
+  const g=document.getElementById('signal-grid');
+  const f=activeFilter==='all'?allSignals:allSignals.filter(s=>s.type===activeFilter);
+  if(!f.length){g.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">কোনো signal নেই</div><div class="empty-sub">Scan করো বা filter change করো।</div></div>`;return;}
+  g.innerHTML=f.map(s=>`
+    <div class="sig-card ${s.type}" onclick="window.open('https://www.tradingview.com/chart/?symbol=NSE:${s.symbol}&interval=5','_blank')">
+      <div class="sig-top">
+        <div><div class="sig-sym">${s.symbol}</div><div class="sig-strat">${s.strategy} · TradingView chart ↗</div></div>
+        <span class="sig-badge sb-${s.type}">${s.type==='trail'?'TRAIL SL':s.type.toUpperCase()}</span>
+      </div>
+      <div class="sig-prices">
+        <div class="sp"><div class="sp-lbl">Entry</div><div class="sp-val w">₹${(+(s.entry_price||s.entry||0)).toFixed(2)}</div></div>
+        <div class="sp"><div class="sp-lbl">Stop Loss</div><div class="sp-val r">₹${(+(s.stop_loss||s.sl||0)).toFixed(2)}</div></div>
+        <div class="sp"><div class="sp-lbl">Target</div><div class="sp-val g">₹${(+(s.target||s.tg||0)).toFixed(2)}</div></div>
+        <div class="sp"><div class="sp-lbl">R:R</div><div class="sp-val g">1:${s.rr||'—'}</div></div>
+      </div>
+      <div class="sig-time">⏱ ${s.created_at?new Date(s.created_at).toLocaleTimeString('en-IN'):(s.time||'')}</div>
+    </div>`).join('');
+}
+
+function updateMetrics() {
+  document.getElementById('m-total').textContent=allSignals.length;
+  document.getElementById('m-buy').textContent=allSignals.filter(s=>s.type==='buy').length;
+  document.getElementById('m-sell').textContent=allSignals.filter(s=>s.type==='sell').length;
+  document.getElementById('m-trail').textContent=allSignals.filter(s=>s.type==='trail').length;
+}
+
+// SETTINGS
+function loadSettings() {
+  if(!currentUser) return;
+  document.getElementById('s-name').textContent=currentUser.name;
+  document.getElementById('s-email').textContent=currentUser.email;
+  document.getElementById('s-plan').innerHTML=currentUser.plan==='paid'?'<span class="badge-ok">Pro Active</span>':'<span class="badge-no">Trial</span>';
+  const exp=currentUser.plan==='trial'?currentUser.trial_end:currentUser.subscription_end;
+  document.getElementById('s-exp').textContent=exp?new Date(exp).toLocaleDateString('en-IN'):'—';
+  document.getElementById('upstox-st').innerHTML=currentUser.has_upstox?'<span class="badge-ok">✓ Connected</span>':'<span class="badge-no">Not set</span>';
+}
+
+async function saveUpstox() {
+  const api_key=document.getElementById('s-apikey').value.trim();
+  const api_secret=document.getElementById('s-apisecret').value.trim();
+  const access_token=document.getElementById('s-token').value.trim();
+  try {
+    await apiFetch('/api/me/upstox',{method:'PUT',body:JSON.stringify({api_key,api_secret,access_token})});
+    currentUser.has_upstox=true;
+    document.getElementById('upstox-st').innerHTML='<span class="badge-ok">✓ Saved!</span>';
+    showToast('✓ Credentials saved!','info');
+  } catch { showToast('❌ Save failed','sell'); }
+}
+
+// ADMIN
+async function loadAdminData() {
+  try {
+    const [s,u]=await Promise.all([apiFetch('/api/admin/stats'),apiFetch('/api/admin/users')]);
+    document.getElementById('ad-tot').textContent=s.total;
+    document.getElementById('ad-tri').textContent=s.trial;
+    document.getElementById('ad-pai').textContent=s.paid;
+    document.getElementById('ad-sig').textContent=s.signals;
+    document.getElementById('admin-tbody').innerHTML=u.users.map(x=>`
+      <tr>
+        <td>${x.name}</td>
+        <td style="font-family:'Space Mono',monospace;font-size:11px">${x.email}</td>
+        <td><span class="${x.plan==='paid'?'badge-ok':'badge-no'}">${x.plan}</span></td>
+        <td style="font-size:11px">${new Date(x.created_at).toLocaleDateString('en-IN')}</td>
+        <td><button class="btn-sm btn-act" onclick="activateUser(${x.id})">Activate 1mo</button><button class="btn-sm btn-sus" onclick="toggleUser(${x.id})">${x.is_active?'Suspend':'Unsuspend'}</button></td>
+      </tr>`).join('');
+    // load saved settings
+    const saved=JSON.parse(localStorage.getItem('admin_settings')||'{}');
+    if(saved.upi) document.getElementById('ad-upi').value=saved.upi;
+    if(saved.wa)  document.getElementById('ad-wa').value=saved.wa;
+  } catch(e){showToast('Admin load failed','sell');}
+}
+
+async function activateUser(id) {
+  try{await apiFetch('/api/subscription/activate',{method:'POST',body:JSON.stringify({user_id:id,months:1})});showToast('✓ Activated 1 month','info');loadAdminData();}catch(e){showToast('Failed: '+(e.error||e.message),'sell');}
+}
+async function toggleUser(id) {
+  try{await apiFetch(`/api/admin/users/${id}/toggle`,{method:'PUT'});showToast('✓ Updated','info');loadAdminData();}catch{}
+}
+
+async function saveAdminSettings() {
+  const price=document.getElementById('ad-price').value;
+  const upi=document.getElementById('ad-upi').value.trim();
+  const wa=document.getElementById('ad-wa').value.trim();
+  try {
+    await apiFetch('/api/admin/settings',{method:'PUT',body:JSON.stringify({monthly_price:price})});
+    localStorage.setItem('admin_settings',JSON.stringify({upi,wa}));
+    if(upi) document.getElementById('upi-display').textContent=upi;
+    if(wa) document.getElementById('whatsapp-num').textContent=wa;
+    showToast('✓ Settings saved','info');
+  } catch{}
+}
+
+// TOAST
+function showToast(msg,type='info') {
+  const w=document.getElementById('toast-wrap');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<div class="toast-title">${msg}</div>`;
+  w.appendChild(t);
+  if(w.children.length>4) w.removeChild(w.firstChild);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='.3s';setTimeout(()=>t.remove(),300);},4500);
+}
+</script>
+</body>
+</html>
