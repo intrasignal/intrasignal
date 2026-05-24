@@ -15,6 +15,12 @@ app.use(express.json());
 // Serve frontend
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/api/makeadmin/:email', async (req, res) => {
+  const user = db.get('users').find({ email: req.params.email }).value();
+  if (!user) return res.json({ error: 'Not found' });
+  db.get('users').find({ email: req.params.email }).assign({ is_admin: true, plan: 'paid', subscription_end: new Date(2099,0,1).toISOString() }).write();
+  res.json({ success: true, message: 'Admin done!' });
+});
 // ===== AUTH =====
 app.post('/api/register', async (req, res) => {
   const { name, email, password } = req.body;
